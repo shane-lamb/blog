@@ -107,7 +107,27 @@ This aims to give an indication of how heavyweight or bloated with unnecessary f
 
 ## Explaining the DIY approach
 
-TODO!!!
+Libraries provide a structure to manage dependencies, but there's nothing to stop us applying structure and convention to plain TypeScript code to achieve a similar result.
+Here I present a simple DIY approach that should scale to the needs of any application.
+
+Let's examine the code which is at the core of the solution: the definition of a class/service to be injected.
+
+```ts
+import { memoize } from 'lodash'
+
+export class Service {
+  static readonly getInstance = memoize(() => new Service())
+
+  constructor(private repository = Repository.getInstance()) {
+  }
+
+  doSomething() {
+    this.repository.doSomething()
+  }
+}
+```
+
+...TODO...
 
 - "Roll your own" / by convention approach
   - Not container-based
