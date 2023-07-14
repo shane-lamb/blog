@@ -14,6 +14,6 @@ describe('No-framework approach to managing dependencies (mocking repository)', 
 // example of handy function to reduce boilerplate when mocking!
 function mockInstance<T>(singleton: { getInstance: () => T }) {
     const thisMock = mock<T>()
-    jest.spyOn(singleton, 'getInstance').mockImplementation(() => thisMock)
+    jest.spyOn(singleton, 'getInstance').mockReturnValue(thisMock)
     return thisMock
 }

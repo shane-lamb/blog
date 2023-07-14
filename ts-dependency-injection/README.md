@@ -126,18 +126,68 @@ export class Service {
   }
 }
 ```
+- These should constitute the bulk of dependencies in your application: internal classes which need to be instantiated as a singleton instance
+- The level of boilerplate is low
+- In this example, we have a dependency on the commonly used `lodash` library which provides the `memoize()` method. The function is very simple, and could be replaced by a helper method in your application code. It simply caches the result of the function after the first invocation, which enables the singleton pattern for this class
+- In the constructor, we can use the default parameters feature of TypeScript to "inject" dependencies in a manner that is syntactically similar to `private repository: Repository`
+  - This enables functional equivalency to a library like `tsyringe` which uses reflection to detect the type of constructor parameters and inject accordingly
+  - This is in the "decentralised registration" style and carries the benefits of that approach
 
-...TODO...
+Typically though, there are some dependencies that need a different style of registration, in cases where you don't control the class being injected.
+These can be placed into a configuration file like so:
 
-- "Roll your own" / by convention approach
-  - Not container-based
-    - Mocking of dependencies can be achieved using `spyOn()`/`mockImplementation()` methods of `jest`, for example
-    - Mocking is about as easy as with `tsyringe`
-  - Option for decentralised configuration
-  - Strong typing
-  - All errors caught at compile time
-    - Tracing/fixing errors is a bit easier than with `typed-inject`
-      - Because it'll point to the place in the code, rather than typing errors which are more abstract
+```ts
+export const dependencies = {
+  getDb: memoize(() => new pg.Pool(dbConfig)),
+}
+```
+- It's intentional that the `getDb` resolver is nested within an object (in this case named `dependencies`). This enables type-safe mocking using `jest.spyOn(dependencies, 'getDb')`. If `getDb` was exported at the top level of the file, you'd have to resort to loosely typed methods of mocking.
+
+Now, we move on to the remaining points of how to bootstrap the application, and how to mock nested dependencies in testing!
+
+### Bootstrapping the application
+
+```ts
+const app = App.getInstance()
+```
+
+That's it! You can resolve the entry point to your application the same way that child dependencies are resolved.
+
+### Testing and mocking
+
+Type safety in mocking can be ensured by providing mock implementations using the `jest.spyOn()` method.
+Additionally, I'd recommend using the `jest-mock-extended` library to generate type-safe mocks, so that you don't need to hand craft any mock instances!
+
+```ts
+import { mock } from 'jest-mock-extended'
+
+const mockRepository = mock(Repository)
+jest.spyOn(Repository, 'getInstance').mockReturnValue(mockRepository)
+
+const app = App.getInstance() // app instance using the mock repository!
+
+// test assertions here
+```
+
+As this is a common pattern for mocking, we could utilise a helper method to make things more compact:
+
+```ts
+function mockInstance<T>(singleton: { getInstance: () => T }) {
+  const thisMock = mock<T>()
+  jest.spyOn(singleton, 'getInstance').mockReturnValue(thisMock)
+  return thisMock
+}
+```
+
+Resulting in the test code looking like:
+
+```ts
+const mockRepository = mockInstance(Repository)
+
+const app = App.getInstance() // app instance using the mock repository!
+
+// test assertions here
+```
 
 ## Conclusion
 
